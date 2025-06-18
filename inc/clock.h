@@ -61,7 +61,7 @@ typedef struct clock_s *clock_t;
  * @param clock puntero al reloj a crear.
  * @return un puntero al reloj creado.
  */
-clock_t clock_create(void);
+clock_t clock_create(uint16_t ticks_per_second);
 
 /**
  * @brief 
@@ -81,6 +81,23 @@ bool clock_get_time(clock_t clock, clock_time_t *result);
  * @return false 
  */
 bool clock_time_is_valid(clock_t clock);
+
+/**
+ * @brief función que ajusta el tiempo del reloj.
+ * 
+ * @param clock 
+ * @param new_time 
+ * @return true 
+ * @return false 
+ */
+bool clock_set_time(clock_t clock, const clock_time_t *new_time);
+
+/**
+ * @brief función que simula el avance del reloj en segundos.
+ * 
+ * @param clock 
+ */
+void clock_new_tick(clock_t clock);
 /* === End of conditional blocks =================================================================================== */
 
 #ifdef __cplusplus
