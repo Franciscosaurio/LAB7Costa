@@ -27,6 +27,15 @@ SPDX-License-Identifier: MIT
 #include "clock.h"
 /* === Macros definitions ========================================================================================== */
 #define CLOCK_TICKS_PER_SECOND 5 // Define cuántos ticks por segundo simula el reloj
+#define TEST_ASSERT_TIME(hours_tens, hours_units, minutes_tens, minutes_units, seconds_tens, seconds_units) \
+    TEST_ASSERT_TRUE_MESSAGE(clock_get_time(clock, &current_time), "Clock has invalid time"); \
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(seconds_units, current_time.bcd[0], "Diferencia en unidad de segundos"); \
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(seconds_tens,  current_time.bcd[1], "Diferencia en decena de segundos"); \
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(minutes_units, current_time.bcd[2], "Diferencia en unidad de minutos"); \
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(minutes_tens,  current_time.bcd[3], "Diferencia en decena de minutos"); \
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(hours_units,   current_time.bcd[4], "Diferencia en unidad de horas"); \
+    TEST_ASSERT_EQUAL_UINT8_MESSAGE(hours_tens,    current_time.bcd[5], "Diferencia en decena de horas");
+
 /* === Private data type declarations ============================================================================== */
 
 /* === Private function declarations =============================================================================== */
@@ -34,7 +43,7 @@ SPDX-License-Identifier: MIT
 /* === Private variable definitions ================================================================================ */
 
 /* === Public variable definitions ================================================================================= */
-void simulate_seconds(clock_t clock, uint8_t seconds) {
+static void simulate_seconds(clock_t clock, uint8_t seconds) {
     // Simula el avance del reloj en segundos
     for (uint32_t i = 0; i < 5*seconds; i++) {
         // Aquí se debería implementar la lógica para avanzar el reloj un segundo
@@ -52,14 +61,21 @@ void simulate_seconds(clock_t clock, uint8_t seconds) {
  -
  */
 
- clock_time_t current_time = {
-        .bcd = {1,2,3,4,5,6}, 
+ 
+clock_t clock; // Declaración del reloj a nivel global
+clock_time_t current_time = {
+        .bcd = {0,0,0,0,0,0}, 
     };
+    void setUp(void){
+    // Inicializa el reloj antes de cada prueba
+    clock = clock_create(CLOCK_TICKS_PER_SECOND);
+    }
+
 void test_set_up_with_invalid_time(void){
     //le asigno un valor inicial para no tener cualquier cosa paracuando se inicialice
     
 
-    clock_t clock=clock_create(CLOCK_TICKS_PER_SECOND); //creo el reloj con un valor de 5 segundos para simular el avance
+    clock=clock_create(CLOCK_TICKS_PER_SECOND); //creo el reloj con un valor de 5 segundos para simular el avance
     TEST_ASSERT_FALSE(clock_time_is_valid(clock));
     //clock_get_time(clock, &current_time);
     TEST_ASSERT_EACH_EQUAL_UINT8(0, current_time.bcd, sizeof(clock_time_t));
@@ -70,35 +86,42 @@ void test_set_up_and_adjust_with_valid_time(void){
     static const clock_time_t new_time = {
         .time={
             .seconds={4,5},
-            .minutes={3,0},
+            .minutes={0,0},
             .hours={1,4},
         }
     };
-    clock_t clock = clock_create(CLOCK_TICKS_PER_SECOND); //creo el reloj con un valor de 5 segundos para simular el avance
+    
     TEST_ASSERT_TRUE(clock_set_time(clock, &new_time));
     TEST_ASSERT_TRUE(clock_get_time(clock, &current_time));
-    TEST_ASSERT_EQUAL_UINT8_ARRAY(new_time.bcd, current_time.bcd, sizeof(clock_time_t));
+    TEST_ASSERT_TIME(4, 1, 0, 0, 5, 4);
+
 
 }
     
 void test_clock_advance_one_second(void){
-    clock_time_t current_time ={0};//inicializo el tiempo actual a 0
-    static const clock_time_t expected_value = {
-        .time={
-            .seconds={0,1}, //segundos
-            .minutes={0,0}, //minutos
-            .hours={0,0}, //horas
-        }
-    };
-    clock_t clock = clock_create(CLOCK_TICKS_PER_SECOND); //creo el reloj con un valor de 5 segundos para simular el avance
+    
     clock_set_time(clock, &(clock_time_t){0});//establezco el tiempo actual a 0
     simulate_seconds(clock, 1); //simulo el avance del reloj en 1 segundo
-    clock_get_time(clock, &current_time);// obtengo el tiempo actual del reloj
-    TEST_ASSERT_EQUAL_UINT8_ARRAY(expected_value.bcd, current_time.bcd, 6);
-    // ^ verifico que el tiempo actual sea el esperado
+    TEST_ASSERT_TIME(0,0,0,0,0,1);
 
 }
     
+void test_clock_advance_ten_second(void){
+    
+    clock_set_time(clock, &(clock_time_t){0});//establezco el tiempo actual a 0
+    simulate_seconds(clock, 10); //simulo el avance del reloj en 1 segundo
+    TEST_ASSERT_TIME(0, 0, 0, 0, 1, 0);
+
+}
+
+void test_alarm_triggers_when_time_matches(void){
+    clock_time_t alarm_time = {.bcd = {0, 1, 0, 0, 0, 0}}; // 00:00:10
+    clock_set_time(clock, &(clock_time_t){0});
+    clock_set_alarm_time(clock, &alarm_time);
+    clock_enable_alarm(clock);
+    simulate_seconds(clock, 10);
+    TEST_ASSERT_TRUE(clock_alarm_triggered(clock));
+}
 
 
 /* === End of documentation ======================================================================================== */

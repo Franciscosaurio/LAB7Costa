@@ -98,6 +98,8 @@ bool clock_set_time(clock_t clock, const clock_time_t *new_time);
  * @param clock 
  */
 void clock_new_tick(clock_t clock);
+
+
 /* === End of conditional blocks =================================================================================== */
 
 #ifdef __cplusplus

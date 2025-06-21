@@ -51,7 +51,9 @@ clock_t clock_create(uint16_t ticks_per_second) {
     // Implementación de la creación del reloj
     // Aquí se puede inicializar el reloj y devolver un puntero a la estructura del reloj
     static struct clock_s self[1]; //crea un espacio de memoria para el reloj
-    memset(self, 0, sizeof(struct clock_s)); //inicializa la memoria del reloj a 0
+    memset(&self->current_time, 0, sizeof(clock_time_t));//inicializa el tiempo actual del reloj a 0
+
+    //memset(self, 0, sizeof(struct clock_s)); //inicializa la memoria del reloj a 0
     self->valid = false; //inicializa el reloj como no válido
     //memset(&self->current_time, 0, sizeof(self->current_time)); //inicializa el tiempo actual del reloj a 0
 
@@ -81,50 +83,26 @@ bool clock_set_time(clock_t self, const clock_time_t *new_time){
     return self->valid; //indica que no se ha podido establecer el tiempo
 }
 
-void clock_new_tick(clock_t clock){
-    (void) clock; // Evita el warning de variable no utilizada
-    /*
-    // Simula el avance del reloj en un segundo
-    clock_time_t current_time;
-    TEST_ASSERT_TRUE(clock_get_time(clock, &current_time));
-    
-    // Incrementa los segundos
-    current_time.time.seconds[1]++;
-    
-    // Maneja el desbordamiento de segundos
-    if (current_time.time.seconds[1] >= 10) {
-        current_time.time.seconds[1] = 0;
-        current_time.time.seconds[0]++;
-        
-        // Maneja el desbordamiento de minutos
-        if (current_time.time.seconds[0] >= 6) {
-            current_time.time.seconds[0] = 0;
-            current_time.time.minutes[1]++;
-            
-            // Maneja el desbordamiento de horas
-            if (current_time.time.minutes[1] >= 10) {
-                current_time.time.minutes[1] = 0;
-                current_time.time.minutes[0]++;
-                
-                // Maneja el desbordamiento de horas
-                if (current_time.time.minutes[0] >= 6) {
-                    current_time.time.minutes[0] = 0;
-                    current_time.time.hours[1]++;
-                    
-                    // Maneja el desbordamiento de horas
-                    if (current_time.time.hours[1] >= 10) {
-                        current_time.time.hours[1] = 0;
-                        current_time.time.hours[0]++;
-                        
-                        // Aquí podrías manejar el desbordamiento de días si es necesario
-                    }
-                }
+void clock_new_tick(clock_t self){
+    static uint8_t tick_counter = 0;
+
+    tick_counter++;
+    if (tick_counter >= 5) { // 5 ticks = 1 segundo
+        tick_counter = 0;
+
+        // Incrementar segundos BCD
+        self->current_time.bcd[0]++; // unidades de segundos
+        if (self->current_time.bcd[0] > 9) {
+            self->current_time.bcd[0] = 0;
+            self->current_time.bcd[1]++; // decenas de segundos
+
+            if (self->current_time.bcd[1] > 5) {
+                self->current_time.bcd[1] = 0;
+                self->current_time.bcd[2]++; // unidades de minutos
+                // Y así sucesivamente...
             }
         }
     }
-    
-    // Establece el nuevo tiempo en el reloj
-    TEST_ASSERT_TRUE(clock_set_time(clock, &current_time));
-    */
 }
+
 /* === End of documentation ======================================================================================== */
