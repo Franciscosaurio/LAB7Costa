@@ -33,9 +33,15 @@ SPDX-License-Identifier: MIT
 /* === Private data type declarations ============================================================================== */
 
 /* === Private function declarations =============================================================================== */
-struct clock_s{
-    clock_time_t current_time; //almacena el tiempo actual del reloj
-    bool valid; //indica si el tiempo del reloj es válido
+
+struct clock_s {
+    clock_time_t current_time;
+    clock_time_t alarm_time;
+    bool valid;
+    bool alarm_enabled;
+    bool alarm_triggered_flag;
+    uint16_t tick_count;
+    uint16_t ticks_per_second;
 };
 /* === Private variable definitions ================================================================================ */
 
@@ -47,17 +53,10 @@ struct clock_s{
 
 
 clock_t clock_create(uint16_t ticks_per_second) {
-    (void) ticks_per_second; //no lo uso pero tengo que castear la variable para que no de warning
-    // Implementación de la creación del reloj
-    // Aquí se puede inicializar el reloj y devolver un puntero a la estructura del reloj
-    static struct clock_s self[1]; //crea un espacio de memoria para el reloj
-    memset(&self->current_time, 0, sizeof(clock_time_t));//inicializa el tiempo actual del reloj a 0
-
-    //memset(self, 0, sizeof(struct clock_s)); //inicializa la memoria del reloj a 0
-    self->valid = false; //inicializa el reloj como no válido
-    //memset(&self->current_time, 0, sizeof(self->current_time)); //inicializa el tiempo actual del reloj a 0
-
-    return self; 
+    static struct clock_s self[1];// declaración de la estructura del reloj
+    memset(self, 0, sizeof(struct clock_s));// inicializa la estructura a cero
+    self->ticks_per_second = ticks_per_second;// establece los ticks por segundo
+    return self;
 }
 bool clock_time_is_valid(clock_t clock) {
     // Implementación de la verificación de la validez del tiempo del reloj
@@ -83,23 +82,84 @@ bool clock_set_time(clock_t self, const clock_time_t *new_time){
     return self->valid; //indica que no se ha podido establecer el tiempo
 }
 
-void clock_new_tick(clock_t self){
-    static uint8_t tick_counter = 0;
 
-    tick_counter++;
-    if (tick_counter >= 5) { // 5 ticks = 1 segundo
-        tick_counter = 0;
+static void bcd_increment(clock_time_t *time) {
+    if (++time->bcd[0] > 9) {
+        time->bcd[0] = 0;
+        if (++time->bcd[1] > 5) {
+            time->bcd[1] = 0;
+            if (++time->bcd[2] > 9) {
+                time->bcd[2] = 0;
+                if (++time->bcd[3] > 5) {
+                    time->bcd[3] = 0;
+                    if (++time->bcd[4] > 9) {
+                        time->bcd[4] = 0;
+                        if (++time->bcd[5] > 2 || (time->bcd[5] == 2 && time->bcd[4] > 3)) {
+                            memset(time, 0, sizeof(clock_time_t));
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
-        // Incrementar segundos BCD
-        self->current_time.bcd[0]++; // unidades de segundos
-        if (self->current_time.bcd[0] > 9) {
-            self->current_time.bcd[0] = 0;
-            self->current_time.bcd[1]++; // decenas de segundos
+void clock_new_tick(clock_t clock) {
+    if (!clock->valid) return;
+    clock->tick_count++;
+    if (clock->tick_count >= clock->ticks_per_second) {
+        clock->tick_count = 0;
+        bcd_increment(&clock->current_time);
 
-            if (self->current_time.bcd[1] > 5) {
-                self->current_time.bcd[1] = 0;
-                self->current_time.bcd[2]++; // unidades de minutos
-                // Y así sucesivamente...
+        if (clock->alarm_enabled &&
+            memcmp(&clock->current_time, &clock->alarm_time, sizeof(clock_time_t)) == 0) {
+            clock->alarm_triggered_flag = true;
+        }
+    }
+}
+
+bool clock_set_alarm_time(clock_t clock, const clock_time_t *alarm_time) {
+    memcpy(&clock->alarm_time, alarm_time, sizeof(clock_time_t));
+    return true;
+}
+
+bool clock_get_alarm_time(clock_t clock, clock_time_t *alarm_time) {
+    memcpy(alarm_time, &clock->alarm_time, sizeof(clock_time_t));
+    return true;
+}
+
+void clock_enable_alarm(clock_t clock) {
+    clock->alarm_enabled = true;
+    clock->alarm_triggered_flag = false;
+}
+
+void clock_disable_alarm(clock_t clock) {
+    clock->alarm_enabled = false;
+    clock->alarm_triggered_flag = false;
+}
+
+bool clock_is_alarm_enabled(clock_t clock) {
+    return clock->alarm_enabled;
+}
+
+bool clock_alarm_triggered(clock_t clock) {
+    return clock->alarm_triggered_flag;
+}
+
+void clock_snooze_alarm(clock_t clock, uint8_t minutes) {
+    clock->alarm_triggered_flag = false;
+    for (uint8_t i = 0; i < minutes; i++) {
+        if (++clock->alarm_time.bcd[2] > 9) {
+            clock->alarm_time.bcd[2] = 0;
+            if (++clock->alarm_time.bcd[3] > 5) {
+                clock->alarm_time.bcd[3] = 0;
+                if (++clock->alarm_time.bcd[4] > 9) {
+                    clock->alarm_time.bcd[4] = 0;
+                    if (++clock->alarm_time.bcd[5] > 2 ||
+                        (clock->alarm_time.bcd[5] == 2 && clock->alarm_time.bcd[4] > 3)) {
+                        memset(&clock->alarm_time, 0, sizeof(clock_time_t));
+                    }
+                }
             }
         }
     }

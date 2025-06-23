@@ -123,5 +123,25 @@ void test_alarm_triggers_when_time_matches(void){
     TEST_ASSERT_TRUE(clock_alarm_triggered(clock));
 }
 
+void test_alarm_disable_prevents_trigger(void){
+    clock_time_t alarm_time = {.bcd = {0, 1, 0, 0, 0, 0}}; // 00:00:10
+    clock_set_time(clock, &(clock_time_t){0});// Establezco el tiempo actual a 0
+    clock_set_alarm_time(clock, &alarm_time);// Establezco la hora de la alarma
+    clock_disable_alarm(clock);// Deshabilito la alarma
+    simulate_seconds(clock, 10);// Simulo el avance del reloj en 10 segundos
+    TEST_ASSERT_FALSE(clock_alarm_triggered(clock));// Verifico que la alarma no se haya activado
+}
+
+void test_snooze_alarm_delays_alarm(void){
+    clock_time_t alarm_time = {.bcd = {0, 1, 0, 0, 0, 0}}; // 00:00:10
+    clock_set_time(clock, &(clock_time_t){0});
+    clock_set_alarm_time(clock, &alarm_time);
+    clock_enable_alarm(clock);
+    clock_snooze_alarm(clock, 1); // pospone 1 minuto
+    simulate_seconds(clock, 10);
+    TEST_ASSERT_FALSE(clock_alarm_triggered(clock));
+    simulate_seconds(clock, 60);
+    TEST_ASSERT_TRUE(clock_alarm_triggered(clock));
+}
 
 /* === End of documentation ======================================================================================== */

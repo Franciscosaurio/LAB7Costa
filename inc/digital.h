@@ -17,16 +17,18 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 SPDX-License-Identifier: MIT
 *********************************************************************************************************************/
 
-#ifndef CLOCK_H
-#define CLOCK_H
+#ifndef DIGITAL_H_
+#define DIGITAL_H_
 
-/** @file clock.h
- ** @brief declaraciones de la funcionalidad del reloj.
+/** @file digital.h
+ ** @brief declaraciones del modulo para gestion de entradas y salidas digitales
  **/
 
 /* === Headers files inclusions ==================================================================================== */
+
 #include <stdint.h>
 #include <stdbool.h>
+
 /* === Header for C++ compatibility ================================================================================ */
 
 #ifdef __cplusplus
@@ -37,138 +39,114 @@ extern "C" {
 
 /* === Public data type declarations =============================================================================== */
 
-//el union es como un struct, es una forma distinta de ver al mismo almaceamiento
-//entonces puedo hacer 2 cosas al mismo tiempo
-typedef union{
-struct{
-    uint8_t seconds[2];
-    uint8_t minutes[2];
-    uint8_t hours[2];
-}time;
-uint8_t bcd[6];
-}clock_time_t;
+typedef enum digital_states_e{
+    DIGITAL_INPUT_WAS_DEACTIVATE = -1,
+    DIGITAL_INPUT_NO_CHANGE = 0,
+    DIGITAL_INPUT_WAS_ACTIVATED = 1,
 
+} digital_states_t;
 
-typedef struct clock_s *clock_t;
+// declaro el tipo de datos que va a gestionar la salida
+//! estructura que representa una salida digital
+typedef struct digital_output_s * digital_output_t;
 
-
+typedef struct digital_input_s * digital_input_t;
 /* === Public variable declarations ================================================================================ */
 
 /* === Public function declarations ================================================================================ */
 
-
 /**
- * @brief funcion que crea el reloj.
- * @param clock puntero al reloj a crear.
- * @return un puntero al reloj creado.
+ * @brief Funcion para crear una salida digital
+ * la funcion crea un objeto de la clase salida digital
+ * la locacion de memoria depende de la 
+ * @ref configuracioin de la biblioteca "config"
+ * @param gpio 
+ * @param bit
+ * @return digital_output_t 
  */
-clock_t clock_create(uint16_t ticks_per_second);
+
+digital_output_t digital_output_create(uint8_t gpio, uint8_t bit);
+//este micro necesita 5 cosas para configurar un pin
+//pero necesita 2 para funcionar
+//las otras 3 van a la funcion main en la parte del while
 
 /**
  * @brief 
  * 
- * @param clock 
- * @param result 
+ * @param self 
+ */
+void digital_output_activate(digital_output_t self);
+
+/**
+ * @brief 
+ * 
+ * @param self 
+ */
+
+void digital_output_deactivate(digital_output_t self);
+
+/**
+ * @brief 
+ * 
+ * @param self 
+ */
+
+void digital_output_toggle(digital_output_t self);
+
+/**
+ * @brief 
+ * 
+ * @param gpio 
+ * @param bit 
+ * @param inverted 
+ * @return digital_input_t 
+ */
+
+digital_input_t digital_input_create(uint8_t gpio, uint8_t bit, bool inverted);
+
+/**
+ * @brief 
+ * 
+ * @param input 
  * @return true 
  * @return false 
  */
-bool clock_get_time(clock_t clock, clock_time_t *result);
+
+
+bool digital_input_get_is_active(digital_input_t input);
 
 /**
- * @brief función que verifica si el tiempo del reloj es válido.
+ * @brief 
  * 
- * @param clock 
+ * @param input 
  * @return true 
  * @return false 
  */
-bool clock_time_is_valid(clock_t clock);
+
+bool digital_was_activated(digital_input_t input);
 
 /**
- * @brief función que ajusta el tiempo del reloj.
+ * @brief 
  * 
- * @param clock 
- * @param new_time 
+ * @param input 
  * @return true 
  * @return false 
  */
-bool clock_set_time(clock_t clock, const clock_time_t *new_time);
+
+bool digital_was_deactivated(digital_input_t input);
 
 /**
- * @brief función que simula el avance del reloj en segundos.
+ * @brief 
  * 
- * @param clock 
+ * @param input 
+ * @return digital_states_t 
  */
-void clock_new_tick(clock_t clock);
 
-/**
- * @brief función que establece la hora de la alarma.
- * 
- * @param clock 
- * @param alarm_time 
- * @return true 
- * @return false 
- */
-bool clock_set_alarm_time(clock_t clock, const clock_time_t *alarm_time);
-
-/**
- * @brief función que obtiene la hora de la alarma.
- * 
- * @param clock 
- * @param alarm_time 
- * @return true 
- * @return false 
- */
-bool clock_get_alarm_time(clock_t clock, clock_time_t *alarm_time);
-
-
-/**
- * @brief función que habilita la alarma.
- * 
- * @param clock 
- */
-void clock_enable_alarm(clock_t clock);
-
-// Deshabilita la alarma
-/**
- * @brief función que deshabilita la alarma.
- * 
- * @param clock 
- */
-void clock_disable_alarm(clock_t clock);
-
-/**
- * @brief función que indica si la alarma está habilitada.
- * 
- * @param clock 
- * @return true 
- * @return false 
- */
-// Indica si la alarma está habilitada
-bool clock_is_alarm_enabled(clock_t clock);
-
-// Indica si la alarma fue activada
-/**
- * @brief función que indica si la alarma fue activada.
- * 
- * @param clock 
- * @return true 
- * @return false 
- */
-bool clock_alarm_triggered(clock_t clock);
-
-// Pospone la alarma una cantidad de minutos
-/**
- * @brief función que pospone la alarma una cantidad de minutos.
- * 
- * @param clock 
- * @param minutes 
- */
-void clock_snooze_alarm(clock_t clock, uint8_t minutes);
-
+digital_states_t digital_was_changed(digital_input_t input);
 /* === End of conditional blocks =================================================================================== */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* CLOCK_H */
+#endif /* DIGITAL_H_ */
