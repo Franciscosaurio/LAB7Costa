@@ -95,7 +95,7 @@ static void bcd_increment(clock_time_t *time) {
                     if (++time->bcd[4] > 9) {
                         time->bcd[4] = 0;
                         if (++time->bcd[5] > 2 || (time->bcd[5] == 2 && time->bcd[4] > 3)) {
-                            memset(time, 0, sizeof(clock_time_t));
+                            memset(time, 0, sizeof(clock_time_t));//memset lo que hace es setear a 00:00:00
                         }
                     }
                 }
@@ -120,6 +120,8 @@ void clock_new_tick(clock_t clock) {
 
 bool clock_set_alarm_time(clock_t clock, const clock_time_t *alarm_time) {
     memcpy(&clock->alarm_time, alarm_time, sizeof(clock_time_t));
+    // Esta línea actualiza la hora de la alarma del reloj copiando todos los datos 
+    //de la estructura alarm_time recibida como parámetro
     return true;
 }
 
@@ -129,13 +131,17 @@ bool clock_get_alarm_time(clock_t clock, clock_time_t *alarm_time) {
 }
 
 void clock_enable_alarm(clock_t clock) {
-    clock->alarm_enabled = true;
-    clock->alarm_triggered_flag = false;
+    clock->alarm_enabled = true;// habilita la alarma
+    clock->alarm_triggered_flag = false;// reinicia el indicador de alarma activada
+    // Esta línea establece la alarma como habilitada y reinicia el indicador de alarma activada
+    // para que no se active inmediatamente al habilitarla.
+    // Esto permite que la alarma se active solo cuando el tiempo actual del reloj coincide con la
+    // hora de la alarma establecida.
 }
 
 void clock_disable_alarm(clock_t clock) {
-    clock->alarm_enabled = false;
-    clock->alarm_triggered_flag = false;
+    clock->alarm_enabled = false;// deshabilita la alarma
+    clock->alarm_triggered_flag = false;// desactiva la alarma
 }
 
 bool clock_is_alarm_enabled(clock_t clock) {

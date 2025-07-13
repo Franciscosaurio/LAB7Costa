@@ -45,7 +45,16 @@ SPDX-License-Identifier: MIT
 /* === Public variable definitions ================================================================================= */
 static void simulate_seconds(clock_t clock, uint8_t seconds) {
     // Simula el avance del reloj en segundos
-    for (uint32_t i = 0; i < 5*seconds; i++) {
+    for (uint32_t i = 0; i < CLOCK_TICKS_PER_SECOND*seconds; i++) {
+        // Aquí se debería implementar la lógica para avanzar el reloj un segundo
+        // Por ejemplo, incrementar los segundos y manejar el desbordamiento de minutos y horas
+        clock_new_tick(clock);
+    }
+}
+
+static void simulate_minutes(clock_t clock, uint8_t minutes) {
+    // Simula el avance del reloj en segundos
+    for (uint32_t i = 0; i < CLOCK_TICKS_PER_SECOND*60*minutes; i++) {
         // Aquí se debería implementar la lógica para avanzar el reloj un segundo
         // Por ejemplo, incrementar los segundos y manejar el desbordamiento de minutos y horas
         clock_new_tick(clock);
@@ -73,9 +82,6 @@ clock_time_t current_time = {
 
 void test_set_up_with_invalid_time(void){
     //le asigno un valor inicial para no tener cualquier cosa paracuando se inicialice
-    
-
-    clock=clock_create(CLOCK_TICKS_PER_SECOND); //creo el reloj con un valor de 5 segundos para simular el avance
     TEST_ASSERT_FALSE(clock_time_is_valid(clock));
     //clock_get_time(clock, &current_time);
     TEST_ASSERT_EACH_EQUAL_UINT8(0, current_time.bcd, sizeof(clock_time_t));
@@ -109,11 +115,23 @@ void test_clock_advance_one_second(void){
 void test_clock_advance_ten_second(void){
     
     clock_set_time(clock, &(clock_time_t){0});//establezco el tiempo actual a 0
-    simulate_seconds(clock, 10); //simulo el avance del reloj en 1 segundo
+    simulate_seconds(clock, 10); //simulo el avance del reloj en 10 segundos
     TEST_ASSERT_TIME(0, 0, 0, 0, 1, 0);
 
 }
 
+void test_time_rollover_to_next_minute(void) {
+    //esta funcion lo que hace es simular el avance del reloj en 60 segundos
+    clock_set_time(clock, &(clock_time_t){0});//establezco el tiempo actual a 0
+    simulate_seconds(clock, 60); //simulo el avance del reloj en 60 segundos
+    TEST_ASSERT_TIME(0, 0, 0, 1, 0, 0);
+}
+void test_time_rollover_to_next_hour(void) {
+    //esta funcion lo que hace es simular el avance del reloj en 3600 segundos
+    clock_set_time(clock, &(clock_time_t){0});//establezco el tiempo actual a 0
+    simulate_minutes(clock, 60); //simulo el avance del reloj en 3600 segundos
+    TEST_ASSERT_TIME(0, 1, 0, 0, 0, 0);
+}
 void test_alarm_triggers_when_time_matches(void){
     clock_time_t alarm_time = {.bcd = {0, 1, 0, 0, 0, 0}}; // 00:00:10
     clock_set_time(clock, &(clock_time_t){0});
@@ -133,6 +151,7 @@ void test_alarm_disable_prevents_trigger(void){
 }
 
 void test_snooze_alarm_delays_alarm(void){
+    //esta funcion lo que hace es que cuando suene la alarma la pospone 1 minuto
     clock_time_t alarm_time = {.bcd = {0, 1, 0, 0, 0, 0}}; // 00:00:10
     clock_set_time(clock, &(clock_time_t){0});
     clock_set_alarm_time(clock, &alarm_time);
@@ -142,6 +161,24 @@ void test_snooze_alarm_delays_alarm(void){
     TEST_ASSERT_FALSE(clock_alarm_triggered(clock));
     simulate_seconds(clock, 60);
     TEST_ASSERT_TRUE(clock_alarm_triggered(clock));
+}
+//consultar
+/*void test_time_rollover_to_zero(void) {
+    clock_time_t max_time = { .bcd = {9, 5, 9, 5, 3, 2} }; // 23:59:59
+    clock_set_time(clock, &max_time);
+    simulate_seconds(clock, 1); // 1 segundo
+    TEST_ASSERT_TIME(0, 0, 0, 0, 0, 0); // Esperado: 00:00:00
+}*/
+void test_snooze_adds_minutes_correctly(void) {
+    clock_time_t alarm = { .bcd = {0, 0, 0, 5, 0, 0} }; // 00:50:00
+    clock_set_time(clock, &alarm);
+    clock_set_alarm_time(clock, &alarm);
+    clock_enable_alarm(clock);
+    simulate_seconds(clock, 0);
+    clock_snooze_alarm(clock, 15); // +15 min -> 01:05:00
+    clock_time_t expected = { .bcd = {0, 0, 5, 0, 1, 0} }; // 01:05:00
+    clock_get_alarm_time(clock, &current_time);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(expected.bcd, current_time.bcd, 6);
 }
 
 /* === End of documentation ======================================================================================== */
