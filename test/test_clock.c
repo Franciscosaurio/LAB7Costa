@@ -53,10 +53,7 @@ static void simulate_seconds(clock_t clock, uint8_t seconds) {
 }
 
 static void simulate_minutes(clock_t clock, uint8_t minutes) {
-    // Simula el avance del reloj en segundos
     for (uint32_t i = 0; i < CLOCK_TICKS_PER_SECOND*60*minutes; i++) {
-        // Aquí se debería implementar la lógica para avanzar el reloj un segundo
-        // Por ejemplo, incrementar los segundos y manejar el desbordamiento de minutos y horas
         clock_new_tick(clock);
     }
 }
@@ -162,13 +159,14 @@ void test_snooze_alarm_delays_alarm(void){
     simulate_seconds(clock, 60);
     TEST_ASSERT_TRUE(clock_alarm_triggered(clock));
 }
-//consultar
-/*void test_time_rollover_to_zero(void) {
+/*
+void test_time_rollover_to_zero(void) {
     clock_time_t max_time = { .bcd = {9, 5, 9, 5, 3, 2} }; // 23:59:59
     clock_set_time(clock, &max_time);
-    simulate_seconds(clock, 1); // 1 segundo
-    TEST_ASSERT_TIME(0, 0, 0, 0, 0, 0); // Esperado: 00:00:00
+    simulate_seconds(clock, 1); // +1s -> 00:00:00
+    TEST_ASSERT_TIME(0, 0, 0, 0, 0, 0);
 }*/
+
 void test_snooze_adds_minutes_correctly(void) {
     clock_time_t alarm = { .bcd = {0, 0, 0, 5, 0, 0} }; // 00:50:00
     clock_set_time(clock, &alarm);
@@ -180,5 +178,131 @@ void test_snooze_adds_minutes_correctly(void) {
     clock_get_alarm_time(clock, &current_time);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(expected.bcd, current_time.bcd, 6);
 }
+
+void test_snooze_wraps_hour_on_60_minutes(void) {
+    //esta funcion es para probar que si se le suma 60 minutos a la alarma,
+    //la hora de la alarma se actualiza correctamente
+    clock_time_t alarm = { .bcd = {0, 0, 5, 5, 0, 0} };// seteo a 00:55:00
+    clock_set_time(clock, &alarm);
+    clock_set_alarm_time(clock, &alarm);
+    clock_enable_alarm(clock);
+    clock_snooze_alarm(clock, 60);
+    //esta linea lo que hace es sumar 60 minutos a la alarma
+    clock_time_t expected = { .bcd = {0, 0, 5, 5, 1, 0} };
+    clock_get_alarm_time(clock, &current_time);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(expected.bcd, current_time.bcd, 6);
+}
+
+void test_set_alarm_and_trigger(void) {
+    clock_time_t alarm = { .bcd = {0, 0, 0, 0, 0, 1} };
+    clock_set_time(clock, &(clock_time_t){ .bcd = {9, 5, 9, 5, 9, 0} });
+    clock_set_alarm_time(clock, &alarm);
+    clock_enable_alarm(clock);
+    simulate_seconds(clock, 1);
+    TEST_ASSERT_TRUE(clock_alarm_triggered(clock));
+}
+
+void test_alarm_not_triggered_if_disabled(void) {
+    clock_time_t alarm = { .bcd = {0, 0, 0, 0, 0, 1} };
+    clock_set_time(clock, &(clock_time_t){ .bcd = {9, 5, 9, 5, 9, 0} });
+    clock_set_alarm_time(clock, &alarm);
+    clock_disable_alarm(clock);
+    simulate_seconds(clock, 1);
+    TEST_ASSERT_FALSE(clock_alarm_triggered(clock));
+}
+/*
+void test_alarm_snooze_five_minutes(void) {
+    clock_time_t time = { .bcd = {0, 0, 0, 5, 5, 0} }; // 00:55:00
+    clock_set_time(clock, &time);
+    clock_set_alarm_time(clock, &time);
+    clock_enable_alarm(clock);
+
+    // Simulamos el tick justo en el horario de la alarma
+    simulate_minutes(clock, 0);
+    TEST_ASSERT_TRUE(clock_alarm_triggered(clock));
+
+    // Snooze por 5 minutos
+    clock_snooze_alarm(clock, 5);
+
+    // Forzamos tick para que reevalúe la alarma con la nueva hora
+    simulate_seconds(clock, 0); // o clock_new_tick(clock);
+    TEST_ASSERT_FALSE(clock_alarm_triggered(clock));
+
+    simulate_minutes(clock, 5);
+    TEST_ASSERT_TRUE(clock_alarm_triggered(clock));
+}*/
+
+
+void test_adjusting_time_disarms_alarm_trigger(void) {
+    //con esta funcion se comprueba que al ajustar la hora del reloj,
+    //la alarma no se active inmediatamente
+    clock_time_t alarm = { .bcd = {0, 0, 0, 0, 0, 1} };//creo la hora de la alarma en 10:00:00
+    clock_set_time(clock, &(clock_time_t){ .bcd = {9, 5, 9, 5, 9, 0} });// seteo la hora del reloj en 9:59:59
+    clock_set_alarm_time(clock, &alarm);
+    clock_enable_alarm(clock);
+    clock_set_time(clock, &(clock_time_t){ .bcd = {1, 0, 0, 0, 0, 1} });// seteo la hora del reloj en 10:00:01
+    simulate_seconds(clock, 1);
+    TEST_ASSERT_FALSE(clock_alarm_triggered(clock));
+}
+
+void test_multiple_snoozes_accumulate_correctly(void) {
+    clock_time_t alarm = { .bcd = {0, 0, 0, 0, 1, 0} }; // 01:00:00
+    clock_set_alarm_time(clock, &alarm);
+    clock_snooze_alarm(clock, 10); // 01:10
+    clock_snooze_alarm(clock, 5);  // 01:15
+    clock_time_t expected = { .bcd = {0, 0, 5, 1, 1, 0} }; // 01:15:00
+    clock_get_alarm_time(clock, &current_time);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(expected.bcd, current_time.bcd, 6);
+}
+
+void test_get_alarm_returns_set_value(void) {
+    clock_time_t alarm = { .bcd = {2, 1, 0, 2, 3, 0} }; // 03:20:12
+    clock_set_alarm_time(clock, &alarm);
+    clock_time_t received = {0};
+    clock_get_alarm_time(clock, &received);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(alarm.bcd, received.bcd, 6);
+}
+
+void test_setting_valid_bcd_time(void) {
+    // Esta función prueba que se pueda establecer una hora válida en formato BCD
+    clock_time_t new_time = { .bcd = {9, 5, 9, 5, 3, 2} }; // 23:59:59
+    TEST_ASSERT_TRUE(clock_set_time(clock, &new_time));
+    TEST_ASSERT_TRUE(clock_get_time(clock, &current_time));
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(new_time.bcd, current_time.bcd, 6);
+}
+
+void test_clock_does_not_advance_if_invalid(void) {
+    simulate_seconds(clock, 10); // Intentamos avanzar sin haber seteado hora
+    TEST_ASSERT_FALSE(clock_get_time(clock, &current_time)); // aún no es válida
+    TEST_ASSERT_EACH_EQUAL_UINT8(0, current_time.bcd, sizeof(clock_time_t)); // sigue en 00:00:00
+}
+
+void test_clock_configures_ticks_per_second(void) {
+    // Solo podemos verificar esto indirectamente haciendo avanzar el reloj
+    clock_set_time(clock, &(clock_time_t){0});
+    simulate_seconds(clock, 1); // con CLOCK_TICKS_PER_SECOND == 5
+    TEST_ASSERT_TIME(0, 0, 0, 0, 0, 1);
+}
+
+void test_null_pointer_protection(void) {
+    TEST_ASSERT_FALSE(clock_set_time(clock, NULL));
+    TEST_ASSERT_FALSE(clock_get_time(clock, NULL));
+    TEST_ASSERT_FALSE(clock_set_alarm_time(clock, NULL));
+    TEST_ASSERT_FALSE(clock_get_alarm_time(clock, NULL));
+}
+void test_alarm_does_not_trigger_after_time_set(void) {
+    clock_time_t alarm = { .bcd = {2, 0, 0, 0, 0, 0} };
+    clock_set_alarm_time(clock, &alarm);
+    clock_enable_alarm(clock);
+    clock_set_time(clock, &(clock_time_t){ .bcd = {1, 0, 0, 0, 0, 0} });
+    simulate_seconds(clock, 1); // ahora es 00:00:02
+
+    TEST_ASSERT_TRUE(clock_alarm_triggered(clock)); // alarma se activa
+
+    clock_set_time(clock, &(clock_time_t){ .bcd = {3, 0, 0, 0, 0, 0} }); // cambiar hora
+
+    TEST_ASSERT_FALSE(clock_alarm_triggered(clock)); // debe resetear el flag
+}
+
 
 /* === End of documentation ======================================================================================== */

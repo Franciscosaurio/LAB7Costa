@@ -67,19 +67,17 @@ bool clock_time_is_valid(clock_t clock) {
     return false; 
 }
 bool clock_get_time(clock_t self, clock_time_t *result) {
-    // Implementación de la obtención del tiempo actual del reloj
-    // Aquí se puede llenar current_time con el tiempo actual del reloj
-    memcpy(result, &self->current_time, sizeof(clock_time_t)); //copia el tiempo actual al resultado
-    return self->valid; //devuelve si el reloj es válido
+    if (!self || !result) return false;
+    memcpy(result, &self->current_time, sizeof(clock_time_t));
+    return self->valid;
 }
 
+
 bool clock_set_time(clock_t self, const clock_time_t *new_time){
-    // Implementación de la configuración del tiempo del reloj
-    // Aquí se puede establecer el nuevo tiempo en el reloj
-    self->valid = true; //marca el reloj como válido
-    memcpy(&self->current_time, new_time, sizeof(clock_time_t)); //copia el nuevo tiempo al reloj
-    (void) new_time; //no lo uso
-    return self->valid; //indica que no se ha podido establecer el tiempo
+    if (!self || !new_time) return false;
+    self->valid = true;
+    memcpy(&self->current_time, new_time, sizeof(clock_time_t));
+    return self->valid;
 }
 
 
@@ -119,16 +117,18 @@ void clock_new_tick(clock_t clock) {
 }
 
 bool clock_set_alarm_time(clock_t clock, const clock_time_t *alarm_time) {
+    if (!clock || !alarm_time) return false;
     memcpy(&clock->alarm_time, alarm_time, sizeof(clock_time_t));
-    // Esta línea actualiza la hora de la alarma del reloj copiando todos los datos 
-    //de la estructura alarm_time recibida como parámetro
     return true;
 }
 
+
 bool clock_get_alarm_time(clock_t clock, clock_time_t *alarm_time) {
+    if (!clock || !alarm_time) return false;
     memcpy(alarm_time, &clock->alarm_time, sizeof(clock_time_t));
     return true;
 }
+
 
 void clock_enable_alarm(clock_t clock) {
     clock->alarm_enabled = true;// habilita la alarma
