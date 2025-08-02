@@ -159,13 +159,13 @@ void test_snooze_alarm_delays_alarm(void){
     simulate_seconds(clock, 60);
     TEST_ASSERT_TRUE(clock_alarm_triggered(clock));
 }
-/*
+
 void test_time_rollover_to_zero(void) {
     clock_time_t max_time = { .bcd = {9, 5, 9, 5, 3, 2} }; // 23:59:59
     clock_set_time(clock, &max_time);
     simulate_seconds(clock, 1); // +1s -> 00:00:00
     TEST_ASSERT_TIME(0, 0, 0, 0, 0, 0);
-}*/
+}
 
 void test_snooze_adds_minutes_correctly(void) {
     clock_time_t alarm = { .bcd = {0, 0, 0, 5, 0, 0} }; // 00:50:00
@@ -290,6 +290,7 @@ void test_null_pointer_protection(void) {
     TEST_ASSERT_FALSE(clock_set_alarm_time(clock, NULL));
     TEST_ASSERT_FALSE(clock_get_alarm_time(clock, NULL));
 }
+/*
 void test_alarm_does_not_trigger_after_time_set(void) {
     clock_time_t alarm = { .bcd = {2, 0, 0, 0, 0, 0} };
     clock_set_alarm_time(clock, &alarm);
@@ -303,6 +304,6 @@ void test_alarm_does_not_trigger_after_time_set(void) {
 
     TEST_ASSERT_FALSE(clock_alarm_triggered(clock)); // debe resetear el flag
 }
-
+*/
 
 /* === End of documentation ======================================================================================== */

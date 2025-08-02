@@ -63,8 +63,8 @@ bool clock_time_is_valid(clock_t clock) {
     // Aquí se puede verificar si el reloj tiene un tiempo válido
     //como no lo necesito pero uso un puntero tengo que castear la variable
     //con void le digo que no se usa
-    (void) clock;
-    return false; 
+    if(!clock) return false;
+    return clock->valid;
 }
 bool clock_get_time(clock_t self, clock_time_t *result) {
     if (!self || !result) return false;
@@ -80,27 +80,47 @@ bool clock_set_time(clock_t self, const clock_time_t *new_time){
     return self->valid;
 }
 
-
 static void bcd_increment(clock_time_t *time) {
+    // Si estamos en 23:59:59
+    if (time->bcd[5] == 2 && time->bcd[4] == 3 &&
+        time->bcd[3] == 5 && time->bcd[2] == 9 &&
+        time->bcd[1] == 5 && time->bcd[0] == 9) {
+        memset(time, 0, sizeof(clock_time_t));
+        return;
+    }
+
+    // Incrementar segundos unidades
     if (++time->bcd[0] > 9) {
         time->bcd[0] = 0;
+
+        // Incrementar segundos decenas
         if (++time->bcd[1] > 5) {
             time->bcd[1] = 0;
+
+            // Incrementar minutos unidades
             if (++time->bcd[2] > 9) {
                 time->bcd[2] = 0;
+
+                // Incrementar minutos decenas
                 if (++time->bcd[3] > 5) {
                     time->bcd[3] = 0;
+
+                    // Incrementar horas unidades
                     if (++time->bcd[4] > 9) {
                         time->bcd[4] = 0;
-                        if (++time->bcd[5] > 2 || (time->bcd[5] == 2 && time->bcd[4] > 3)) {
-                            memset(time, 0, sizeof(clock_time_t));//memset lo que hace es setear a 00:00:00
-                        }
+                        ++time->bcd[5];
+                    }
+
+                    // Si horas decenas quedó en 2, limitar unidades a 3
+                    if (time->bcd[5] == 2 && time->bcd[4] > 3) {
+                        memset(time, 0, sizeof(clock_time_t));
                     }
                 }
             }
         }
     }
 }
+
 
 void clock_new_tick(clock_t clock) {
     if (!clock->valid) return;
